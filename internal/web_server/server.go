@@ -3,16 +3,18 @@ package server
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
+	"os"
 
 	//	"mime"
 	"net/http"
 	"strings"
 
-	"github.com/markbates/goth/gothic"
+	"github.com/npmaile/focusbot/internal/gothic"
 
 	//"github.com/npmaile/focusbot/internal/models"
 	"github.com/npmaile/focusbot/internal/db"
@@ -64,7 +66,7 @@ func testGetServers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
-	
+
 	guildInfoPath := "/users/@me/guilds"
 	discordAPIBase := "https://discord.com/api"
 	req, err := http.NewRequest(http.MethodGet, discordAPIBase+guildInfoPath, nil)
@@ -104,16 +106,11 @@ func index(clientID string, RedirectURL string) func(w http.ResponseWriter, _ *h
 }
 
 func managementPage(w http.ResponseWriter, r *http.Request) {
-	//r = r.WithContext(context.WithValue(r.Context(), "provider", "discord"))
-	user, err := gothic.CompleteUserAuth(w, r)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
+	stuff, err := getCookie(r)
+	if err != nil{
+		os.Exit(4)
 	}
-	err = managementTemplate.Execute(w, user)
-	if err != nil {
-		logerooni.Errorf("problems %+v", err)
-	}
+	json.NewEncoder(w).Encode(stuff)
 }
 
 /*

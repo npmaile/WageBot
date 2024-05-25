@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"aidanwoods.dev/go-paseto"
 	"github.com/bwmarrin/discordgo"
 	"github.com/gorilla/pat"
 	"github.com/gorilla/sessions"
@@ -16,14 +17,16 @@ import (
 	"github.com/markbates/goth/providers/discord"
 	"github.com/npmaile/focusbot/internal/db"
 	"github.com/npmaile/focusbot/internal/gothic"
-	"github.com/npmaile/focusbot/internal/models"
 	"github.com/npmaile/focusbot/pkg/logerooni"
 )
+
+var pasetoKey paseto.V4SymmetricKey
 
 func init() {
 	var secret = make([]byte, 32)
 	rand.Read(secret)
 	gothic.Store = sessions.NewCookieStore(secret)
+	pasetoKey = paseto.NewV4SymmetricKey()
 }
 
 func setupAuth(key string, secret string, callbackURL string, scopes []string, dbInstance db.DataStore) *pat.Router {
@@ -68,11 +71,6 @@ func setupAuth(key string, secret string, callbackURL string, scopes []string, d
 			panic(err.Error())
 		}
 
-		type megaGuildConfig struct {
-			*models.GuildConfig
-			ServerName string
-		}
-
 		var ret []megaGuildConfig
 		for _, guild := range guilds2return {
 			for _, server := range servers {
@@ -84,11 +82,12 @@ func setupAuth(key string, secret string, callbackURL string, scopes []string, d
 				}
 			}
 		}
-		json.NewEncoder(w).Encode(ret)
-		// shove this shit into a token
 
-		// redirect
-
+		err = createCookie("servers", ret, w)
+		if err != nil {
+			panic("don't care")
+		}
+		http.Redirect(w, r, "/management", http.StatusFound)
 	})
 
 	p.Get("/auth/logout/{provider}", func(w http.ResponseWriter, r *http.Request) {
